@@ -1,5 +1,5 @@
 (function () {
-  var KEY = "accounting-system-v1";
+  var KEY = "accounting-system-v2";
   var TYPES = ["Asset", "Liability", "Equity", "Revenue", "Expense"];
 
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -10,24 +10,66 @@
     });
   };
   var cents = function (v) { return Math.round((+v || 0) * 100); };
-  var fmt = function (c) {
-    return c ? (c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-";
-  };
   var num = function (c) {
     return (c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
+  var fmt = function (c) { return c ? num(c) : "-"; };
   var fmtDate = function (d) {
     var x = new Date(d + "T00:00:00");
     return isNaN(x) ? d : x.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
-  var byCode = function (a, b) { return a.code < b.code ? -1 : a.code > b.code ? 1 : 0; };
   var todayISO = function () {
     var d = new Date();
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   };
+  var accSort = function (a, b) {
+    var t = TYPES.indexOf(a.type) - TYPES.indexOf(b.type);
+    if (t) return t;
+    if (a.code !== b.code) return a.code < b.code ? -1 : 1;
+    return Number(a.id) - Number(b.id);
+  };
 
-  /* ---------- data (starts empty) ---------- */
-  function emptyState() { return { accounts: [], entries: [], nextId: 1 }; }
+  /* ---------- the data from the handwritten sheets ---------- */
+  function paperState() {
+    var map = {}, accounts = [], n = 0;
+    [
+      ["Cash", "Asset", "Debit"], ["Accounts Receivable", "Asset", "Debit"], ["Office Supplies", "Asset", "Debit"],
+      ["Office Equipment", "Asset", "Debit"], ["Accumulated Depreciation", "Asset", "Credit"],
+      ["Advertising Payable", "Liability", "Credit"], ["Unearned Computer Service Revenue", "Liability", "Credit"],
+      ["A. Capital", "Equity", "Credit"], ["A. Drawing", "Equity", "Debit"],
+      ["Computer Service Revenue", "Revenue", "Credit"],
+      ["Salary Expense", "Expense", "Debit"], ["Advertising Expense", "Expense", "Debit"],
+      ["Office Supply Expense", "Expense", "Debit"], ["Depreciation Expense", "Expense", "Debit"]
+    ].forEach(function (a) {
+      n++; map[a[0]] = String(n);
+      accounts.push({ id: String(n), code: "", name: a[0], type: a[1], normal: a[2] });
+    });
+    // [date, order key (only when the paper shows no date), description, adjusting?, [[account, debit, credit], ...]]
+    var raw = [
+      ["2024-12-01", "", "To record the business investment", false, [["Cash", 100000, 0], ["A. Capital", 0, 100000]]],
+      ["2024-12-02", "", "To record the payment of purchased equipment", false, [["Office Equipment", 15000, 0], ["Cash", 0, 15000]]],
+      ["2024-12-05", "", "Recording for advanced computer service", false, [["Cash", 2000, 0], ["Unearned Computer Service Revenue", 0, 2000]]],
+      ["2024-12-06", "", "Payment for service provided", false, [["Accounts Receivable", 3500, 0], ["Computer Service Revenue", 0, 3500]]],
+      ["2024-12-07", "", "Recording of client's payment", false, [["Cash", 5500, 0], ["Computer Service Revenue", 0, 5500]]],
+      ["", "2024-12-07", "Collecting client's payment", false, [["Cash", 1000, 0], ["Accounts Receivable", 0, 1000]]],
+      ["2024-12-08", "", "To record the payment for office supplies", false, [["Office Supplies", 1500, 0], ["Cash", 0, 1500]]],
+      ["2024-12-10", "", "To record the payment for computer service", false, [["Cash", 1800, 0], ["Computer Service Revenue", 0, 1800]]],
+      ["2024-12-12", "", "Advertisement Payment", false, [["Advertising Expense", 5500, 0], ["Advertising Payable", 0, 5500]]],
+      ["2024-12-15", "", "Recording of owner's withdrawal", false, [["A. Drawing", 3000, 0], ["Cash", 0, 3000]]],
+      ["2023", "", "To record office supplies used", true, [["Office Supply Expense", 500, 0], ["Office Supplies", 0, 500]]],
+      ["2023", "", "To record the depreciation of office supplies", true, [["Depreciation Expense", 237.5, 0], ["Accumulated Depreciation", 0, 237.5]]],
+      ["2023", "", "To record the unearned revenue for this month", true, [["Unearned Computer Service Revenue", 1000, 0], ["Computer Service Revenue", 0, 1000]]],
+      ["2023", "", "To record computer service revenue that remains uncollected", true, [["Accounts Receivable", 7500, 0], ["Computer Service Revenue", 0, 7500]]],
+      ["2023", "", "To record salary", true, [["Salary Expense", 10000, 0], ["Cash", 0, 10000]]],
+      ["2023", "", "To record computer service rendered cash", true, [["Cash", 25000, 0], ["Computer Service Revenue", 0, 25000]]]
+    ];
+    var entries = raw.map(function (r, i) {
+      return { id: i + 1, date: r[0], sort: r[1], ref: "", desc: r[2], adj: r[3],
+        lines: r[4].map(function (l) { return { acct: map[l[0]], dr: l[1], cr: l[2] }; }) };
+    });
+    return { accounts: accounts, entries: entries, nextId: raw.length + 1, nextAcct: n + 1 };
+  }
+  function emptyState() { return { accounts: [], entries: [], nextId: 1, nextAcct: 1 }; }
   function load() {
     try {
       var s = JSON.parse(localStorage.getItem(KEY));
@@ -36,26 +78,28 @@
     return null;
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
-  var state = load() || emptyState();
+  var state = load() || paperState();
 
-  var acctMap = function () { var m = {}; state.accounts.forEach(function (a) { m[a.code] = a; }); return m; };
-  var acctName = function (code) { var a = acctMap()[code]; return a ? a.name : code; };
-  var usage = function (code) {
+  var acctMap = function () { var m = {}; state.accounts.forEach(function (a) { m[a.id] = a; }); return m; };
+  var acctName = function (id) { var a = acctMap()[id]; return a ? a.name : ""; };
+  var acctLabel = function (a) { return (a.code ? a.code + " - " : "") + a.name; };
+  var hasCodes = function () { return state.accounts.some(function (a) { return a.code; }); };
+  var usage = function (id) {
     return state.entries.reduce(function (n, e) {
-      return n + e.lines.filter(function (l) { return l.code === code; }).length;
+      return n + e.lines.filter(function (l) { return l.acct === id; }).length;
     }, 0);
   };
 
   /* ---------- trial balance ---------- */
   function computeTB() {
-    var rows = state.accounts.slice().sort(byCode).map(function (a) {
+    var rows = state.accounts.slice().sort(accSort).map(function (a) {
       return { a: a, udr: 0, ucr: 0, adr: 0, acr: 0 };
     });
     var map = {};
-    rows.forEach(function (r) { map[r.a.code] = r; });
+    rows.forEach(function (r) { map[r.a.id] = r; });
     state.entries.forEach(function (e) {
       e.lines.forEach(function (l) {
-        var r = map[l.code]; if (!r) return;
+        var r = map[l.acct]; if (!r) return;
         if (e.adj) { r.adr += cents(l.dr); r.acr += cents(l.cr); }
         else { r.udr += cents(l.dr); r.ucr += cents(l.cr); }
       });
@@ -86,11 +130,11 @@
       $("#coa").innerHTML = '<p class="empty">No accounts yet. Add your first account above.</p>';
       return;
     }
-    var h = '<table><thead><tr><th>Code</th><th>Account name</th><th>Type</th><th>Normal balance</th><th class="num">Entries</th><th></th></tr></thead><tbody>';
-    state.accounts.slice().sort(byCode).forEach(function (a) {
-      var n = usage(a.code);
-      h += "<tr><td>" + esc(a.code) + "</td><td>" + esc(a.name) + "</td><td>" + a.type + "</td><td>" + a.normal +
-        '</td><td class="num">' + n + '</td><td><button type="button" class="link" data-del="acct:' + esc(a.code) + '">Delete</button></td></tr>';
+    var codes = hasCodes();
+    var h = "<table><thead><tr>" + (codes ? "<th>Code</th>" : "") + '<th>Account name</th><th>Type</th><th>Normal balance</th><th class="num">Entries</th><th></th></tr></thead><tbody>';
+    state.accounts.slice().sort(accSort).forEach(function (a) {
+      h += "<tr>" + (codes ? "<td>" + esc(a.code) + "</td>" : "") + "<td>" + esc(a.name) + "</td><td>" + a.type + "</td><td>" + a.normal +
+        '</td><td class="num">' + usage(a.id) + '</td><td><button type="button" class="link" data-del="acct:' + a.id + '">Delete</button></td></tr>';
     });
     $("#coa").innerHTML = h + "</tbody></table>";
   }
@@ -100,14 +144,15 @@
     if (!es.length) {
       return '<p class="empty">' + (adj ? "No adjusting entries yet." : "No transactions yet.") + "</p>";
     }
-    es.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id; });
+    var key = function (e) { return e.sort || e.date; };
+    es.sort(function (a, b) { return key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : a.id - b.id; });
     var td = 0, tc = 0;
     var h = '<table class="journal"><thead><tr><th>Date</th><th>Transaction</th><th>Ref</th><th class="num">Debit</th><th class="num">Credit</th><th></th></tr></thead><tbody>';
     es.forEach(function (e) {
-      h += '<tr class="entry"><td>' + fmtDate(e.date) + "</td><td></td><td>" + esc(e.ref || "") + "</td><td></td><td></td><td></td></tr>";
+      h += '<tr class="entry"><td>' + esc(fmtDate(e.date)) + "</td><td></td><td>" + esc(e.ref || "") + "</td><td></td><td></td><td></td></tr>";
       e.lines.forEach(function (l) {
         var d = cents(l.dr), c = cents(l.cr); td += d; tc += c;
-        h += '<tr class="line"><td></td><td class="' + (c > 0 && d === 0 ? "ind2" : "ind1") + '">' + esc(acctName(l.code)) +
+        h += '<tr class="line"><td></td><td class="' + (c > 0 && d === 0 ? "ind2" : "ind1") + '">' + esc(acctName(l.acct)) +
           '</td><td></td><td class="num">' + (d ? num(d) : "") + '</td><td class="num">' + (c ? num(c) : "") + "</td><td></td></tr>";
       });
       h += '<tr class="line last"><td></td><td class="ind2"><em>' + esc(e.desc) + '</em></td><td></td><td></td><td></td>' +
@@ -126,15 +171,16 @@
       $("#tb-summary").textContent = "";
       return;
     }
-    var h = '<table class="tb"><thead><tr><th rowspan="2">Code</th><th rowspan="2">Account</th>' +
+    var codes = hasCodes();
+    var h = '<table class="tb"><thead><tr>' + (codes ? '<th rowspan="2">Code</th>' : "") + '<th rowspan="2">Account</th>' +
       '<th colspan="2" class="num">Unadjusted</th><th colspan="2" class="num">Adjustments</th><th colspan="2" class="num">Adjusted</th></tr><tr>' +
       '<th class="num">Debit</th><th class="num">Credit</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead><tbody>';
     tb.rows.forEach(function (r) {
-      h += "<tr><td>" + esc(r.a.code) + "</td><td>" + esc(r.a.name) + '</td><td class="num">' + fmt(r.u.dr) + '</td><td class="num">' + fmt(r.u.cr) +
+      h += "<tr>" + (codes ? "<td>" + esc(r.a.code) + "</td>" : "") + "<td>" + esc(r.a.name) + '</td><td class="num">' + fmt(r.u.dr) + '</td><td class="num">' + fmt(r.u.cr) +
         '</td><td class="num">' + fmt(r.adr) + '</td><td class="num">' + fmt(r.acr) + '</td><td class="num">' + fmt(r.f.dr) + '</td><td class="num">' + fmt(r.f.cr) + "</td></tr>";
     });
     var t = tb.t;
-    h += '</tbody><tfoot><tr class="total"><td></td><td>Total</td><td class="num">' + num(t.udr) + '</td><td class="num">' + num(t.ucr) + '</td><td class="num">' + num(t.adr) +
+    h += '</tbody><tfoot><tr class="total">' + (codes ? "<td></td>" : "") + "<td>Total</td>" + '<td class="num">' + num(t.udr) + '</td><td class="num">' + num(t.ucr) + '</td><td class="num">' + num(t.adr) +
       '</td><td class="num">' + num(t.acr) + '</td><td class="num">' + num(t.fdr) + '</td><td class="num">' + num(t.fcr) + "</td></tr></tfoot></table>";
     $("#tb-wrap").innerHTML = h;
     var rev = 0, exp = 0;
@@ -174,18 +220,21 @@
     e.preventDefault();
     var code = $("#a-code").value.trim(), name = $("#a-name").value.trim(), m = $("#a-msg");
     function say(t, ok) { m.textContent = t; m.className = "msg " + (ok ? "ok" : "bad"); }
-    if (!code || !name) return say("Enter both a code and a name.");
-    if (acctMap()[code]) return say("Code " + code + " is already used by " + acctMap()[code].name + ".");
-    state.accounts.push({ code: code, name: name, type: $("#a-type").value, normal: $("#a-normal").value });
+    if (!name) return say("Enter an account name.");
+    var dup = state.accounts.filter(function (a) {
+      return a.name.toLowerCase() === name.toLowerCase() || (code && a.code === code);
+    })[0];
+    if (dup) return say("That account already exists: " + acctLabel(dup) + ".");
+    state.accounts.push({ id: String(state.nextAcct++), code: code, name: name, type: $("#a-type").value, normal: $("#a-normal").value });
     save(); renderAll();
     $("#a-code").value = ""; $("#a-name").value = "";
-    say("Added " + code + " " + name + ".", true);
+    say("Added " + name + ".", true);
   });
 
   /* ---------- journal entry forms ---------- */
   function acctOptions(sel) {
-    return '<option value="">Select account</option>' + state.accounts.slice().sort(byCode).map(function (a) {
-      return '<option value="' + esc(a.code) + '"' + (a.code === sel ? " selected" : "") + ">" + esc(a.code) + " - " + esc(a.name) + "</option>";
+    return '<option value="">Select account</option>' + state.accounts.slice().sort(accSort).map(function (a) {
+      return '<option value="' + a.id + '"' + (a.id === sel ? " selected" : "") + ">" + esc(acctLabel(a)) + "</option>";
     }).join("");
   }
   function refreshOptions() {
@@ -202,8 +251,8 @@
   function resetLines(p) { $("#" + p + "-lines").innerHTML = ""; addLine(p); addLine(p); recalc(p); }
   function readLines(p) {
     return $$("#" + p + "-lines tr").map(function (r) {
-      return { code: $(".in-acct", r).value, dr: +$(".in-dr", r).value || 0, cr: +$(".in-cr", r).value || 0 };
-    }).filter(function (l) { return l.code && (l.dr > 0 || l.cr > 0); });
+      return { acct: $(".in-acct", r).value, dr: +$(".in-dr", r).value || 0, cr: +$(".in-cr", r).value || 0 };
+    }).filter(function (l) { return l.acct && (l.dr > 0 || l.cr > 0); });
   }
   function recalc(p) {
     if (!$("#" + p + "-lines")) return;
@@ -259,14 +308,14 @@
     if (!desc) return say("Add a description.");
     if (ls.length < 2) return say("An entry needs at least two lines.");
     if (td !== tc || td === 0) return say("Debits and credits must match.");
-    state.entries.push({ id: state.nextId++, date: date, ref: ref, desc: desc, adj: adj, lines: ls });
+    state.entries.push({ id: state.nextId++, date: date, sort: "", ref: ref, desc: desc, adj: adj, lines: ls });
     save();
     $("#" + p + "-desc").value = ""; $("#" + p + "-ref").value = "";
     resetLines(p); renderAll();
     $("#" + p + "-msg").textContent = "Entry posted."; $("#" + p + "-msg").className = "msg ok";
   }
 
-  /* ---------- delete / clear, with an in-page confirmation ---------- */
+  /* ---------- delete / clear / restore, with an in-page confirmation ---------- */
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-del],[data-act]"); if (!b) return;
     var label = b.dataset.label || "Delete";
@@ -279,20 +328,22 @@
     }
     if (b.dataset.act === "clear") {
       state = emptyState();
+    } else if (b.dataset.act === "restore") {
+      state = paperState();
     } else {
       var parts = b.dataset.del.split(":");
       if (parts[0] === "entry") {
         state.entries = state.entries.filter(function (x) { return String(x.id) !== parts[1]; });
       } else {
-        var n = usage(parts[1]), m = $("#a-msg");
+        var n = usage(parts[1]), m = $("#a-msg"), nm = acctName(parts[1]);
         if (n) {
-          m.textContent = "Account " + parts[1] + " is used in " + n + " entry line" + (n > 1 ? "s" : "") + " and cannot be deleted. Delete those entries first.";
+          m.textContent = nm + " is used in " + n + " entry line" + (n > 1 ? "s" : "") + " and cannot be deleted. Delete those entries first.";
           m.className = "msg bad";
           delete b.dataset.armed; b.textContent = "Delete"; b.classList.remove("armed");
           return;
         }
-        state.accounts = state.accounts.filter(function (a) { return a.code !== parts[1]; });
-        m.textContent = "Deleted account " + parts[1] + "."; m.className = "msg ok";
+        state.accounts = state.accounts.filter(function (a) { return a.id !== parts[1]; });
+        m.textContent = "Deleted " + nm + "."; m.className = "msg ok";
       }
     }
     save(); renderAll();

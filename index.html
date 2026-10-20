@@ -22,7 +22,7 @@
     <h2>Chart of Accounts</h2>
     <form class="box" id="acct-form" autocomplete="off">
       <div class="row">
-        <label>Account code<input id="a-code" type="text" maxlength="10" required></label>
+        <label>Account code (optional)<input id="a-code" type="text" maxlength="10"></label>
         <label class="grow">Account name<input id="a-name" type="text" maxlength="60" required></label>
         <label>Type<select id="a-type"></select></label>
         <label>Normal balance<select id="a-normal"><option>Debit</option><option>Credit</option></select></label>
@@ -55,6 +55,7 @@
 
   <footer>
     <button type="button" class="link" data-act="clear" data-label="Clear all data">Clear all data</button>
+    <button type="button" class="link" data-act="restore" data-label="Restore original entries">Restore original entries</button>
     <span>Data is saved in this browser only.</span>
   </footer>
 </div>
