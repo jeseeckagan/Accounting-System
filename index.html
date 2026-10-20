@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accounting Management System</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Accounting Management System</h1>
+      <div class="sub">Sample books: Reyes Print &amp; Design &middot; month ending October 31, 2026 &middot; amounts in Philippine pesos (&#8369;)</div>
+    </div>
+    <div class="pills" id="pills"></div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab" role="tab" data-tab="accounts" id="t-accounts">Chart of Accounts</button>
+    <button class="tab" role="tab" data-tab="transactions" id="t-transactions">Business Transactions</button>
+    <button class="tab" role="tab" data-tab="trial-balance" id="t-trial-balance">Trial Balance</button>
+    <button class="tab" role="tab" data-tab="adjustments" id="t-adjustments">Adjustments</button>
+  </nav>
+
+  <!-- Chart of Accounts -->
+  <section class="panel" id="p-accounts" role="tabpanel" aria-labelledby="t-accounts">
+    <div>
+      <h2>Chart of Accounts</h2>
+      <p class="lede">Every account the business can post to. Contra accounts such as accumulated depreciation and owner's drawings keep the opposite normal balance from their type.</p>
+    </div>
+    <form class="card" id="acct-form" autocomplete="off">
+      <div class="f-row">
+        <label>Account code<input id="a-code" type="text" inputmode="numeric" maxlength="8" placeholder="1040" required></label>
+        <label class="grow">Account name<input id="a-name" type="text" maxlength="60" placeholder="Office Furniture" required></label>
+        <label>Type<select id="a-type"></select></label>
+        <label>Normal balance<select id="a-normal"><option>Debit</option><option>Credit</option></select></label>
+        <button class="btn primary" type="submit">Add account</button>
+      </div>
+      <div class="msg" id="a-msg" role="status"></div>
+    </form>
+    <div class="tbl-wrap"><table class="coa" id="coa"></table></div>
+  </section>
+
+  <!-- Business Transactions -->
+  <section class="panel" id="p-transactions" role="tabpanel" aria-labelledby="t-transactions" hidden>
+    <div>
+      <h2>Business Transactions</h2>
+      <p class="lede">Record each transaction as a journal entry. Debits must equal credits before an entry can be posted.</p>
+    </div>
+    <div id="tx-form"></div>
+    <div class="head-row">
+      <h3>General journal</h3>
+      <label style="flex:0 1 260px">Search entries<input id="tx-q" type="search" placeholder="Description, account or reference"></label>
+    </div>
+    <div class="tbl-wrap" id="tx-list"></div>
+  </section>
+
+  <!-- Trial Balance -->
+  <section class="panel" id="p-trial-balance" role="tabpanel" aria-labelledby="t-trial-balance" hidden>
+    <div>
+      <h2>Trial Balance</h2>
+      <p class="lede">Ten-column worksheet reduced to six: balances before adjustments, the adjusting entries, and balances after. Each pair of totals should match.</p>
+    </div>
+    <div class="tbl-wrap" id="tb-wrap"></div>
+    <div class="summary" id="tb-summary"></div>
+  </section>
+
+  <!-- Adjustments -->
+  <section class="panel" id="p-adjustments" role="tabpanel" aria-labelledby="t-adjustments" hidden>
+    <div>
+      <h2>Adjustments</h2>
+      <p class="lede">Adjusting entries dated at period end. They update the trial balance but stay separate from day-to-day transactions.</p>
+    </div>
+    <div id="adj-form"></div>
+    <div class="head-row"><h3>Adjusting entries</h3></div>
+    <div class="tbl-wrap" id="adj-list"></div>
+  </section>
+
+  <footer class="foot">
+    <span>Data stays in this browser only.</span>
+    <button class="link" data-act="reset" data-label="Reset to sample data">Reset to sample data</button>
+    <button class="link" data-act="clear" data-label="Clear all entries">Clear all entries</button>
+  </footer>
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
