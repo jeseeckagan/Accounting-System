@@ -1,64 +1,174 @@
+
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Accounting Management System</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Accounting Management System</title>
+
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-<div class="page">
-  <h1>Accounting Management System</h1>
-  <p class="status" id="status"></p>
+  <div class="page">
 
-  <nav class="tabs">
-    <button type="button" class="tab" data-tab="accounts" id="t-accounts">1. Chart of Accounts</button>
-    <button type="button" class="tab" data-tab="transactions" id="t-transactions">2. Business Transactions</button>
-    <button type="button" class="tab" data-tab="trial-balance" id="t-trial-balance">3. Trial Balance</button>
-    <button type="button" class="tab" data-tab="adjustments" id="t-adjustments">4. Adjustments</button>
-  </nav>
+    <h1>Accounting Management System</h1>
 
-  <section id="p-accounts">
-    <h2>Chart of Accounts</h2>
-    <form class="box" id="acct-form" autocomplete="off">
-      <div class="row">
-        <label>Account code (optional)<input id="a-code" type="text" maxlength="10"></label>
-        <label class="grow">Account name<input id="a-name" type="text" maxlength="60" required></label>
-        <label>Type<select id="a-type"></select></label>
-        <label>Normal balance<select id="a-normal"><option>Debit</option><option>Credit</option></select></label>
-        <button type="submit" class="btn primary">Add account</button>
-      </div>
-      <p class="msg" id="a-msg"></p>
-    </form>
-    <div class="table-wrap" id="coa"></div>
-  </section>
+    <p class="status" id="status">
+      Connecting to Supabase...
+    </p>
 
-  <section id="p-transactions" hidden>
-    <h2>Business Transactions</h2>
-    <div id="tx-form"></div>
-    <h3>General Journal</h3>
-    <div class="table-wrap" id="tx-list"></div>
-  </section>
+    <!-- Navigation tabs -->
+    <nav class="tabs">
+      <button
+        type="button"
+        class="tab"
+        data-tab="accounts"
+        id="t-accounts">
+        1. Chart of Accounts
+      </button>
 
-  <section id="p-trial-balance" hidden>
-    <h2>Trial Balance</h2>
-    <div class="table-wrap" id="tb-wrap"></div>
-    <p class="summary" id="tb-summary"></p>
-  </section>
+      <button
+        type="button"
+        class="tab"
+        data-tab="transactions"
+        id="t-transactions">
+        2. Business Transactions
+      </button>
 
-  <section id="p-adjustments" hidden>
-    <h2>Adjustments</h2>
-    <div id="adj-form"></div>
-    <h3>Adjusting Entries</h3>
-    <div class="table-wrap" id="adj-list"></div>
-  </section>
+      <button
+        type="button"
+        class="tab"
+        data-tab="trial-balance"
+        id="t-trial-balance">
+        3. Trial Balance
+      </button>
 
-  <footer>
-    <button type="button" class="link" data-act="clear" data-label="Clear all data">Clear all data</button>
-    <button type="button" class="link" data-act="restore" data-label="Restore original entries">Restore original entries</button>
-    <span>Data is saved in this browser only.</span>
-  </footer>
-</div>
-<script src="script.js"></script>
+      <button
+        type="button"
+        class="tab"
+        data-tab="adjustments"
+        id="t-adjustments">
+        4. Adjustments
+      </button>
+    </nav>
+
+    <!-- Chart of Accounts -->
+    <section id="p-accounts">
+      <h2>Chart of Accounts</h2>
+
+      <form class="box" id="acct-form" autocomplete="off">
+        <div class="row">
+
+          <label>
+            Account code (optional)
+            <input
+              id="a-code"
+              type="text"
+              maxlength="10">
+          </label>
+
+          <label class="grow">
+            Account name
+            <input
+              id="a-name"
+              type="text"
+              maxlength="60"
+              required>
+          </label>
+
+          <label>
+            Type
+            <select id="a-type"></select>
+          </label>
+
+          <label>
+            Normal balance
+            <select id="a-normal">
+              <option>Debit</option>
+              <option>Credit</option>
+            </select>
+          </label>
+
+          <button
+            type="submit"
+            class="btn primary">
+            Add account
+          </button>
+
+        </div>
+
+        <p class="msg" id="a-msg" role="status"></p>
+      </form>
+
+      <div class="table-wrap" id="coa"></div>
+    </section>
+
+    <!-- Business Transactions -->
+    <section id="p-transactions" hidden>
+      <h2>Business Transactions</h2>
+
+      <div id="tx-form"></div>
+
+      <h3>General Journal</h3>
+
+      <div class="table-wrap" id="tx-list"></div>
+    </section>
+
+    <!-- Trial Balance -->
+    <section id="p-trial-balance" hidden>
+      <h2>Trial Balance</h2>
+
+      <div class="table-wrap" id="tb-wrap"></div>
+
+      <p class="summary" id="tb-summary"></p>
+    </section>
+
+    <!-- Adjustments -->
+    <section id="p-adjustments" hidden>
+      <h2>Adjustments</h2>
+
+      <div id="adj-form"></div>
+
+      <h3>Adjusting Entries</h3>
+
+      <div class="table-wrap" id="adj-list"></div>
+    </section>
+
+    <!-- Footer actions -->
+    <footer>
+      <button
+        type="button"
+        class="link"
+        data-act="clear"
+        data-label="Clear all data">
+        Clear all data
+      </button>
+
+      <button
+        type="button"
+        class="link"
+        data-act="restore"
+        data-label="Restore original entries">
+        Restore original entries
+      </button>
+
+      <span>
+        Data is stored in Supabase.
+      </span>
+    </footer>
+
+  </div>
+
+  <!-- Supabase JavaScript library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Your Supabase project configuration -->
+  <script src="supabase-config.js"></script>
+
+  <!-- Accounting system functionality -->
+  <script src="script.js"></script>
+
 </body>
 </html>
