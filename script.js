@@ -1,12 +1,12 @@
 (function () {
-  var KEY = "ams-books-v1";
+  var KEY = "ams-books-v3";
   var TYPES = ["Asset", "Liability", "Equity", "Revenue", "Expense"];
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
   var cents = function (v) { return Math.round((+v || 0) * 100); };
   var fmt = function (c) { return c ? (c / 100).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "–"; };
-  var peso = function (c) { return "₱" + (c / 100).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var peso = function (c) { return "" + (c / 100).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   var fmtDate = function (d) { var x = new Date(d + "T00:00:00"); return isNaN(x) ? d : x.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }); };
   var byCode = function (a, b) { return a.code < b.code ? -1 : a.code > b.code ? 1 : 0; };
 
@@ -14,39 +14,35 @@
   function sampleState() {
     var accounts = [
       ["1000", "Cash", "Asset", "Debit"], ["1010", "Accounts Receivable", "Asset", "Debit"],
-      ["1020", "Supplies", "Asset", "Debit"], ["1030", "Prepaid Insurance", "Asset", "Debit"],
-      ["1500", "Equipment", "Asset", "Debit"], ["1510", "Accumulated Depreciation, Equipment", "Asset", "Credit"],
-      ["2000", "Accounts Payable", "Liability", "Credit"], ["2010", "Salaries Payable", "Liability", "Credit"],
-      ["2020", "Unearned Revenue", "Liability", "Credit"],
-      ["3000", "Owner's Capital", "Equity", "Credit"], ["3010", "Owner's Drawings", "Equity", "Debit"],
-      ["4000", "Service Revenue", "Revenue", "Credit"],
-      ["5000", "Salaries Expense", "Expense", "Debit"], ["5010", "Rent Expense", "Expense", "Debit"],
-      ["5020", "Supplies Expense", "Expense", "Debit"], ["5030", "Utilities Expense", "Expense", "Debit"],
-      ["5040", "Insurance Expense", "Expense", "Debit"], ["5050", "Depreciation Expense", "Expense", "Debit"]
+      ["1020", "Office Supplies", "Asset", "Debit"], ["1500", "Office Equipment", "Asset", "Debit"],
+      ["1510", "Accumulated Depreciation", "Asset", "Credit"],
+      ["2000", "Advertising Payable", "Liability", "Credit"], ["2010", "Unearned Computer Service Revenue", "Liability", "Credit"],
+      ["3000", "A. Capital", "Equity", "Credit"], ["3010", "A. Drawing", "Equity", "Debit"],
+      ["4000", "Computer Service Revenue", "Revenue", "Credit"],
+      ["5000", "Salary Expense", "Expense", "Debit"], ["5010", "Advertising Expense", "Expense", "Debit"],
+      ["5020", "Office Supply Expense", "Expense", "Debit"], ["5030", "Depreciation Expense", "Expense", "Debit"]
     ].map(function (a) { return { code: a[0], name: a[1], type: a[2], normal: a[3] }; });
     // [date, ref, description, adj?, [[code, debit, credit], ...]]
     var raw = [
-      ["2026-10-01", "J-001", "Owner invested cash in the business", 0, [["1000", 500000, 0], ["3000", 0, 500000]]],
-      ["2026-10-02", "J-002", "Purchased printing equipment for cash", 0, [["1500", 120000, 0], ["1000", 0, 120000]]],
-      ["2026-10-03", "J-003", "Paid 12-month insurance premium in advance", 0, [["1030", 24000, 0], ["1000", 0, 24000]]],
-      ["2026-10-05", "J-004", "Bought paper and ink supplies on account", 0, [["1020", 15000, 0], ["2000", 0, 15000]]],
-      ["2026-10-06", "J-005", "Paid October shop rent", 0, [["5010", 18000, 0], ["1000", 0, 18000]]],
-      ["2026-10-08", "J-006", "Printing services, paid in cash", 0, [["1000", 85000, 0], ["4000", 0, 85000]]],
-      ["2026-10-10", "J-007", "Design services billed to client", 0, [["1010", 60000, 0], ["4000", 0, 60000]]],
-      ["2026-10-12", "J-008", "Advance payment received for a December job", 0, [["1000", 30000, 0], ["2020", 0, 30000]]],
-      ["2026-10-15", "J-009", "Paid staff salaries", 0, [["5000", 40000, 0], ["1000", 0, 40000]]],
-      ["2026-10-17", "J-010", "Collected from client on account", 0, [["1000", 35000, 0], ["1010", 0, 35000]]],
-      ["2026-10-18", "J-011", "Paid electricity and water", 0, [["5030", 6500, 0], ["1000", 0, 6500]]],
-      ["2026-10-19", "J-012", "Owner withdrew cash for personal use", 0, [["3010", 20000, 0], ["1000", 0, 20000]]],
-      ["2026-10-20", "J-013", "Paid part of supplier account", 0, [["2000", 8000, 0], ["1000", 0, 8000]]],
-      ["2026-10-31", "AJE-001", "Supplies used during the month (9,000 on hand)", 1, [["5020", 6000, 0], ["1020", 0, 6000]]],
-      ["2026-10-31", "AJE-002", "Insurance expired for October (24,000 / 12)", 1, [["5040", 2000, 0], ["1030", 0, 2000]]],
-      ["2026-10-31", "AJE-003", "Depreciation of equipment (120,000 / 60 months)", 1, [["5050", 2000, 0], ["1510", 0, 2000]]],
-      ["2026-10-31", "AJE-004", "Salaries earned but unpaid at month end", 1, [["5000", 12000, 0], ["2010", 0, 12000]]],
-      ["2026-10-31", "AJE-005", "Advance billing earned in October", 1, [["2020", 10000, 0], ["4000", 0, 10000]]]
+      ["2024-12-01", "", "To record the business investment", 0, [["1000", 100000, 0], ["3000", 0, 100000]]],
+      ["2024-12-02", "", "To record the payment of purchased equipment", 0, [["1500", 15000, 0], ["1000", 0, 15000]]],
+      ["2024-12-05", "", "Recording for advanced computer service", 0, [["1000", 2000, 0], ["2010", 0, 2000]]],
+      ["2024-12-06", "", "Payment for service provided", 0, [["1010", 3500, 0], ["4000", 0, 3500]]],
+      ["2024-12-07", "", "Recording of client's payment", 0, [["1000", 5500, 0], ["4000", 0, 5500]]],
+      ["", "", "Collecting client's payment", 0, [["1000", 1000, 0], ["1010", 0, 1000]], "2024-12-07"],
+      ["2024-12-08", "", "To record the payment for office supplies", 0, [["1020", 1500, 0], ["1000", 0, 1500]]],
+      ["2024-12-10", "", "To record the payment for computer service", 0, [["1000", 1800, 0], ["4000", 0, 1800]]],
+      ["2024-12-12", "", "Advertisement Payment", 0, [["5010", 5500, 0], ["2000", 0, 5500]]],
+      ["2024-12-15", "", "Recording of owner's withdrawal", 0, [["3010", 3000, 0], ["1000", 0, 3000]]],
+      ["2023", "", "To record office supplies used", 1, [["5020", 500, 0], ["1020", 0, 500]]],
+      ["2023", "", "To record the depreciation of office supplies", 1, [["5030", 237.5, 0], ["1510", 0, 237.5]]],
+      ["2023", "", "To record the unearned revenue for this month", 1, [["2010", 1000, 0], ["4000", 0, 1000]]],
+      ["2023", "", "To record computer service revenue that remains uncollected", 1, [["1010", 7500, 0], ["4000", 0, 7500]]],
+      ["2023", "", "To record salary", 1, [["5000", 10000, 0], ["1000", 0, 10000]]],
+      ["2023", "", "To record computer service rendered cash", 1, [["1000", 25000, 0], ["4000", 0, 25000]]]
     ];
     var entries = raw.map(function (r, i) {
-      return { id: i + 1, date: r[0], ref: r[1], desc: r[2], adj: !!r[3],
+      return { id: i + 1, date: r[0], sort: r[5] || "", ref: r[1], desc: r[2], adj: !!r[3],
         lines: r[4].map(function (l) { return { code: l[0], dr: l[1], cr: l[2] }; }) };
     });
     return { accounts: accounts, entries: entries, nextId: raw.length + 1 };
@@ -126,7 +122,8 @@
       });
     }
     if (!es.length) return '<p class="empty">' + (q ? "No entries match that search." : adj ? "No adjusting entries yet. Use the form above to post one." : "No transactions yet. Use the form above to post the first one.") + "</p>";
-    es.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id; });
+    var key = function (e) { return e.sort || e.date; };
+    es.sort(function (a, b) { return key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : a.id - b.id; });
     var td = 0, tc = 0;
     var h = '<table class="journal"><thead><tr><th>Date</th><th>Particulars</th><th>Ref</th><th class="num">Debit</th><th class="num">Credit</th><th></th></tr></thead><tbody>';
     es.forEach(function (e) {
@@ -205,13 +202,10 @@
 
   /* ---------- journal entry forms ---------- */
   var TPL = [
-    { label: "Supplies used", desc: "Supplies used during the month", dr: "5020", cr: "1020" },
-    { label: "Prepaid insurance expired", desc: "Insurance expense for the month", dr: "5040", cr: "1030" },
-    { label: "Depreciation", desc: "Depreciation of equipment for the month", dr: "5050", cr: "1510" },
-    { label: "Accrued salaries", desc: "Salaries earned but not yet paid", dr: "5000", cr: "2010" },
-    { label: "Unearned revenue earned", desc: "Advance billings now earned", dr: "2020", cr: "4000" },
-    { label: "Accrued revenue", desc: "Services rendered but not yet billed", dr: "1010", cr: "4000" },
-    { label: "Accrued utilities", desc: "Utilities used but not yet billed", dr: "5030", cr: "2000" }
+    { label: "Office supplies used", desc: "To record office supplies used", dr: "5020", cr: "1020" },
+    { label: "Depreciation", desc: "To record the depreciation of office supplies", dr: "5030", cr: "1510" },
+    { label: "Unearned revenue earned", desc: "To record the unearned revenue for this month", dr: "2010", cr: "4000" },
+    { label: "Revenue not yet collected", desc: "To record computer service revenue that remains uncollected", dr: "1010", cr: "4000" }
   ];
   function todayISO() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   function monthEndISO() { var d = new Date(); var e = new Date(d.getFullYear(), d.getMonth() + 1, 0); return e.getFullYear() + "-" + String(e.getMonth() + 1).padStart(2, "0") + "-" + String(e.getDate()).padStart(2, "0"); }
@@ -261,7 +255,7 @@
       '<tfoot><tr><td>Totals</td><td class="num" id="' + p + '-dt"></td><td class="num" id="' + p + '-ct"></td><td></td></tr></tfoot></table></div>' +
       '<div class="f-actions"><button type="button" class="btn" id="' + p + '-add">Add line</button><span class="msg" id="' + p + '-msg" role="status"></span>' +
       '<button type="submit" class="btn primary" id="' + p + '-post" disabled>' + (adj ? "Post adjustment" : "Post transaction") + "</button></div></form>";
-    $("#" + p + "-date").value = adj ? monthEndISO() : todayISO();
+    $("#" + p + "-date").value = "";
     resetLines(p);
     var form = $("#" + p + "-f");
     $("#" + p + "-add").addEventListener("click", function () { addLine(p); });
