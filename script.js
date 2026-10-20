@@ -1,52 +1,33 @@
 (function () {
-  var KEY = "ams-books-v3";
+  var KEY = "accounting-system-v1";
   var TYPES = ["Asset", "Liability", "Equity", "Revenue", "Expense"];
+
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
-  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
-  var cents = function (v) { return Math.round((+v || 0) * 100); };
-  var fmt = function (c) { return c ? (c / 100).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "–"; };
-  var peso = function (c) { return "" + (c / 100).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-  var fmtDate = function (d) { var x = new Date(d + "T00:00:00"); return isNaN(x) ? d : x.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }); };
-  var byCode = function (a, b) { return a.code < b.code ? -1 : a.code > b.code ? 1 : 0; };
-
-  /* ---------- sample books ---------- */
-  function sampleState() {
-    var accounts = [
-      ["1000", "Cash", "Asset", "Debit"], ["1010", "Accounts Receivable", "Asset", "Debit"],
-      ["1020", "Office Supplies", "Asset", "Debit"], ["1500", "Office Equipment", "Asset", "Debit"],
-      ["1510", "Accumulated Depreciation", "Asset", "Credit"],
-      ["2000", "Advertising Payable", "Liability", "Credit"], ["2010", "Unearned Computer Service Revenue", "Liability", "Credit"],
-      ["3000", "A. Capital", "Equity", "Credit"], ["3010", "A. Drawing", "Equity", "Debit"],
-      ["4000", "Computer Service Revenue", "Revenue", "Credit"],
-      ["5000", "Salary Expense", "Expense", "Debit"], ["5010", "Advertising Expense", "Expense", "Debit"],
-      ["5020", "Office Supply Expense", "Expense", "Debit"], ["5030", "Depreciation Expense", "Expense", "Debit"]
-    ].map(function (a) { return { code: a[0], name: a[1], type: a[2], normal: a[3] }; });
-    // [date, ref, description, adj?, [[code, debit, credit], ...]]
-    var raw = [
-      ["2024-12-01", "", "To record the business investment", 0, [["1000", 100000, 0], ["3000", 0, 100000]]],
-      ["2024-12-02", "", "To record the payment of purchased equipment", 0, [["1500", 15000, 0], ["1000", 0, 15000]]],
-      ["2024-12-05", "", "Recording for advanced computer service", 0, [["1000", 2000, 0], ["2010", 0, 2000]]],
-      ["2024-12-06", "", "Payment for service provided", 0, [["1010", 3500, 0], ["4000", 0, 3500]]],
-      ["2024-12-07", "", "Recording of client's payment", 0, [["1000", 5500, 0], ["4000", 0, 5500]]],
-      ["", "", "Collecting client's payment", 0, [["1000", 1000, 0], ["1010", 0, 1000]], "2024-12-07"],
-      ["2024-12-08", "", "To record the payment for office supplies", 0, [["1020", 1500, 0], ["1000", 0, 1500]]],
-      ["2024-12-10", "", "To record the payment for computer service", 0, [["1000", 1800, 0], ["4000", 0, 1800]]],
-      ["2024-12-12", "", "Advertisement Payment", 0, [["5010", 5500, 0], ["2000", 0, 5500]]],
-      ["2024-12-15", "", "Recording of owner's withdrawal", 0, [["3010", 3000, 0], ["1000", 0, 3000]]],
-      ["2023", "", "To record office supplies used", 1, [["5020", 500, 0], ["1020", 0, 500]]],
-      ["2023", "", "To record the depreciation of office supplies", 1, [["5030", 237.5, 0], ["1510", 0, 237.5]]],
-      ["2023", "", "To record the unearned revenue for this month", 1, [["2010", 1000, 0], ["4000", 0, 1000]]],
-      ["2023", "", "To record computer service revenue that remains uncollected", 1, [["1010", 7500, 0], ["4000", 0, 7500]]],
-      ["2023", "", "To record salary", 1, [["5000", 10000, 0], ["1000", 0, 10000]]],
-      ["2023", "", "To record computer service rendered cash", 1, [["1000", 25000, 0], ["4000", 0, 25000]]]
-    ];
-    var entries = raw.map(function (r, i) {
-      return { id: i + 1, date: r[0], sort: r[5] || "", ref: r[1], desc: r[2], adj: !!r[3],
-        lines: r[4].map(function (l) { return { code: l[0], dr: l[1], cr: l[2] }; }) };
+  var esc = function (s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
-    return { accounts: accounts, entries: entries, nextId: raw.length + 1 };
-  }
+  };
+  var cents = function (v) { return Math.round((+v || 0) * 100); };
+  var fmt = function (c) {
+    return c ? (c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-";
+  };
+  var num = function (c) {
+    return (c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  var fmtDate = function (d) {
+    var x = new Date(d + "T00:00:00");
+    return isNaN(x) ? d : x.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+  var byCode = function (a, b) { return a.code < b.code ? -1 : a.code > b.code ? 1 : 0; };
+  var todayISO = function () {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  };
+
+  /* ---------- data (starts empty) ---------- */
+  function emptyState() { return { accounts: [], entries: [], nextId: 1 }; }
   function load() {
     try {
       var s = JSON.parse(localStorage.getItem(KEY));
@@ -55,20 +36,23 @@
     return null;
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
-  var state = load() || sampleState();
+  var state = load() || emptyState();
 
   var acctMap = function () { var m = {}; state.accounts.forEach(function (a) { m[a.code] = a; }); return m; };
   var acctName = function (code) { var a = acctMap()[code]; return a ? a.name : code; };
   var usage = function (code) {
-    return state.entries.reduce(function (n, e) { return n + e.lines.filter(function (l) { return l.code === code; }).length; }, 0);
+    return state.entries.reduce(function (n, e) {
+      return n + e.lines.filter(function (l) { return l.code === code; }).length;
+    }, 0);
   };
 
-  /* ---------- calculations ---------- */
+  /* ---------- trial balance ---------- */
   function computeTB() {
     var rows = state.accounts.slice().sort(byCode).map(function (a) {
       return { a: a, udr: 0, ucr: 0, adr: 0, acr: 0 };
     });
-    var map = {}; rows.forEach(function (r) { map[r.a.code] = r; });
+    var map = {};
+    rows.forEach(function (r) { map[r.a.code] = r; });
     state.entries.forEach(function (e) {
       e.lines.forEach(function (l) {
         var r = map[l.code]; if (!r) return;
@@ -87,86 +71,84 @@
   }
 
   /* ---------- rendering ---------- */
-  function renderPills(tb) {
+  function renderStatus(tb) {
     var tx = state.entries.filter(function (e) { return !e.adj; }).length;
     var aj = state.entries.length - tx;
-    var ok = tb.t.udr === tb.t.ucr && tb.t.fdr === tb.t.fcr;
-    $("#pills").innerHTML =
-      '<span class="pill"><b>' + state.accounts.length + '</b> accounts</span>' +
-      '<span class="pill"><b>' + tx + '</b> transactions</span>' +
-      '<span class="pill"><b>' + aj + '</b> adjustments</span>' +
-      '<span class="pill ' + (ok ? "ok" : "bad") + '">' + (ok ? "Trial balance is in balance" : "Trial balance is out of balance") + "</span>";
+    var bal = "";
+    if (state.entries.length) {
+      bal = (tb.t.udr === tb.t.ucr && tb.t.fdr === tb.t.fcr) ? " | Trial balance: balanced" : " | Trial balance: NOT balanced";
+    }
+    $("#status").textContent = "Accounts: " + state.accounts.length + " | Transactions: " + tx + " | Adjustments: " + aj + bal;
   }
 
   function renderAccounts() {
-    var h = '<thead><tr><th>Code</th><th>Account name</th><th>Normal balance</th><th class="num">Entries</th><th></th></tr></thead><tbody>';
-    TYPES.forEach(function (t) {
-      var list = state.accounts.filter(function (a) { return a.type === t; }).sort(byCode);
-      if (!list.length) return;
-      h += '<tr class="grp"><td colspan="5">' + { Asset: "Assets", Liability: "Liabilities", Equity: "Equity", Revenue: "Revenue", Expense: "Expenses" }[t] + "</td></tr>";
-      list.forEach(function (a) {
-        var n = usage(a.code);
-        h += '<tr><td class="code">' + esc(a.code) + "</td><td>" + esc(a.name) + '</td><td><span class="tag">' + a.normal + '</span></td><td class="num">' + (n || "–") +
-          '</td><td style="text-align:right"><button class="link" data-del="acct:' + esc(a.code) + '">Delete</button></td></tr>';
-      });
+    if (!state.accounts.length) {
+      $("#coa").innerHTML = '<p class="empty">No accounts yet. Add your first account above.</p>';
+      return;
+    }
+    var h = '<table><thead><tr><th>Code</th><th>Account name</th><th>Type</th><th>Normal balance</th><th class="num">Entries</th><th></th></tr></thead><tbody>';
+    state.accounts.slice().sort(byCode).forEach(function (a) {
+      var n = usage(a.code);
+      h += "<tr><td>" + esc(a.code) + "</td><td>" + esc(a.name) + "</td><td>" + a.type + "</td><td>" + a.normal +
+        '</td><td class="num">' + n + '</td><td><button type="button" class="link" data-del="acct:' + esc(a.code) + '">Delete</button></td></tr>';
     });
-    $("#coa").innerHTML = h + "</tbody>";
+    $("#coa").innerHTML = h + "</tbody></table>";
   }
 
-  function journalHTML(adj, q) {
+  function journalHTML(adj) {
     var es = state.entries.filter(function (e) { return !!e.adj === adj; });
-    if (q) {
-      q = q.toLowerCase();
-      es = es.filter(function (e) {
-        return (e.desc + " " + e.ref + " " + e.lines.map(function (l) { return l.code + " " + acctName(l.code); }).join(" ")).toLowerCase().indexOf(q) > -1;
-      });
+    if (!es.length) {
+      return '<p class="empty">' + (adj ? "No adjusting entries yet." : "No transactions yet.") + "</p>";
     }
-    if (!es.length) return '<p class="empty">' + (q ? "No entries match that search." : adj ? "No adjusting entries yet. Use the form above to post one." : "No transactions yet. Use the form above to post the first one.") + "</p>";
-    var key = function (e) { return e.sort || e.date; };
-    es.sort(function (a, b) { return key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : a.id - b.id; });
+    es.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id; });
     var td = 0, tc = 0;
-    var h = '<table class="journal"><thead><tr><th>Date</th><th>Particulars</th><th>Ref</th><th class="num">Debit</th><th class="num">Credit</th><th></th></tr></thead><tbody>';
+    var h = '<table class="journal"><thead><tr><th>Date</th><th>Transaction</th><th>Ref</th><th class="num">Debit</th><th class="num">Credit</th><th></th></tr></thead><tbody>';
     es.forEach(function (e) {
-      h += '<tr class="e"><td class="dim" style="white-space:nowrap">' + fmtDate(e.date) + "</td><td><b>" + esc(e.desc) + '</b></td><td class="code">' + esc(e.ref) +
-        '</td><td></td><td></td><td style="text-align:right"><button class="link" data-del="entry:' + e.id + '">Delete</button></td></tr>';
-      e.lines.forEach(function (l, i) {
+      h += '<tr class="entry"><td>' + fmtDate(e.date) + "</td><td></td><td>" + esc(e.ref || "") + "</td><td></td><td></td><td></td></tr>";
+      e.lines.forEach(function (l) {
         var d = cents(l.dr), c = cents(l.cr); td += d; tc += c;
-        h += '<tr class="l' + (i === e.lines.length - 1 ? " last" : "") + '"><td></td><td class="' + (c > 0 && d === 0 ? "d2" : "d1") + '">' + esc(acctName(l.code)) +
-          ' <span class="code">' + esc(l.code) + '</span></td><td></td><td class="num">' + (d ? fmt(d) : "") + '</td><td class="num">' + (c ? fmt(c) : "") + "</td><td></td></tr>";
+        h += '<tr class="line"><td></td><td class="' + (c > 0 && d === 0 ? "ind2" : "ind1") + '">' + esc(acctName(l.code)) +
+          '</td><td></td><td class="num">' + (d ? num(d) : "") + '</td><td class="num">' + (c ? num(c) : "") + "</td><td></td></tr>";
       });
+      h += '<tr class="line last"><td></td><td class="ind2"><em>' + esc(e.desc) + '</em></td><td></td><td></td><td></td>' +
+        '<td><button type="button" class="link" data-del="entry:' + e.id + '">Delete</button></td></tr>';
     });
-    return h + '</tbody><tfoot><tr><td colspan="3">Total</td><td class="num">' + fmt(td) + '</td><td class="num">' + fmt(tc) + "</td><td></td></tr></tfoot></table>";
+    return h + '</tbody><tfoot><tr class="total"><td colspan="3">Total</td><td class="num">' + num(td) + '</td><td class="num">' + num(tc) + "</td><td></td></tr></tfoot></table>";
   }
   function renderJournals() {
-    $("#tx-list").innerHTML = journalHTML(false, $("#tx-q").value.trim());
-    $("#adj-list").innerHTML = journalHTML(true, "");
+    $("#tx-list").innerHTML = journalHTML(false);
+    $("#adj-list").innerHTML = journalHTML(true);
   }
 
   function renderTB(tb) {
+    if (!tb.rows.length) {
+      $("#tb-wrap").innerHTML = '<p class="empty">No accounts yet. Add accounts and post entries to see the trial balance.</p>';
+      $("#tb-summary").textContent = "";
+      return;
+    }
     var h = '<table class="tb"><thead><tr><th rowspan="2">Code</th><th rowspan="2">Account</th>' +
-      '<th class="grp" colspan="2">Unadjusted</th><th class="grp g-adj" colspan="2">Adjustments</th><th class="grp g-fin" colspan="2">Adjusted</th></tr><tr>' +
-      '<th class="num bl">Debit</th><th class="num">Credit</th><th class="num g-adj bl">Debit</th><th class="num g-adj">Credit</th><th class="num g-fin bl">Debit</th><th class="num g-fin">Credit</th></tr></thead><tbody>';
+      '<th colspan="2" class="num">Unadjusted</th><th colspan="2" class="num">Adjustments</th><th colspan="2" class="num">Adjusted</th></tr><tr>' +
+      '<th class="num">Debit</th><th class="num">Credit</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead><tbody>';
     tb.rows.forEach(function (r) {
-      h += '<tr><td class="code">' + esc(r.a.code) + "</td><td>" + esc(r.a.name) + '</td><td class="num bl">' + fmt(r.u.dr) + '</td><td class="num">' + fmt(r.u.cr) +
-        '</td><td class="num g-adj bl">' + fmt(r.adr) + '</td><td class="num g-adj">' + fmt(r.acr) + '</td><td class="num g-fin bl">' + fmt(r.f.dr) + '</td><td class="num g-fin">' + fmt(r.f.cr) + "</td></tr>";
+      h += "<tr><td>" + esc(r.a.code) + "</td><td>" + esc(r.a.name) + '</td><td class="num">' + fmt(r.u.dr) + '</td><td class="num">' + fmt(r.u.cr) +
+        '</td><td class="num">' + fmt(r.adr) + '</td><td class="num">' + fmt(r.acr) + '</td><td class="num">' + fmt(r.f.dr) + '</td><td class="num">' + fmt(r.f.cr) + "</td></tr>";
     });
     var t = tb.t;
-    h += '</tbody><tfoot><tr><td></td><td>Totals</td><td class="num bl">' + fmt(t.udr) + '</td><td class="num">' + fmt(t.ucr) + '</td><td class="num g-adj bl">' + fmt(t.adr) +
-      '</td><td class="num g-adj">' + fmt(t.acr) + '</td><td class="num g-fin bl">' + fmt(t.fdr) + '</td><td class="num g-fin">' + fmt(t.fcr) + "</td></tr></tfoot></table>";
+    h += '</tbody><tfoot><tr class="total"><td></td><td>Total</td><td class="num">' + num(t.udr) + '</td><td class="num">' + num(t.ucr) + '</td><td class="num">' + num(t.adr) +
+      '</td><td class="num">' + num(t.acr) + '</td><td class="num">' + num(t.fdr) + '</td><td class="num">' + num(t.fcr) + "</td></tr></tfoot></table>";
     $("#tb-wrap").innerHTML = h;
     var rev = 0, exp = 0;
     tb.rows.forEach(function (r) {
       if (r.a.type === "Revenue") rev += r.f.cr - r.f.dr;
       if (r.a.type === "Expense") exp += r.f.dr - r.f.cr;
     });
-    $("#tb-summary").innerHTML =
-      "<div><span>Revenue (adjusted)</span><b>" + peso(rev) + "</b></div><div><span>Expenses (adjusted)</span><b>" + peso(exp) + "</b></div><div><span>Net income</span><b>" + peso(rev - exp) + "</b></div>" +
-      "<div><span>Difference, adjusted</span><b>" + peso(Math.abs(t.fdr - t.fcr)) + "</b></div>";
+    $("#tb-summary").textContent = "Net income (adjusted): " + num(rev - exp);
   }
 
   function renderAll() {
     var tb = computeTB();
-    renderPills(tb); renderAccounts(); renderJournals(); renderTB(tb); refreshOptions();
+    renderStatus(tb); renderAccounts(); renderJournals(); renderTB(tb); refreshOptions();
+    ["tx", "adj"].forEach(recalc);
   }
 
   /* ---------- tabs ---------- */
@@ -175,11 +157,12 @@
     if (TABS.indexOf(name) < 0) name = "accounts";
     TABS.forEach(function (t) {
       $("#p-" + t).hidden = t !== name;
-      $("#t-" + t).setAttribute("aria-selected", t === name ? "true" : "false");
+      $("#t-" + t).classList.toggle("active", t === name);
     });
   }
   $(".tabs").addEventListener("click", function (e) {
-    var b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab);
+    var b = e.target.closest("[data-tab]");
+    if (b) { setTab(b.dataset.tab); window.scrollTo(0, 0); }
   });
 
   /* ---------- chart of accounts form ---------- */
@@ -192,7 +175,6 @@
     var code = $("#a-code").value.trim(), name = $("#a-name").value.trim(), m = $("#a-msg");
     function say(t, ok) { m.textContent = t; m.className = "msg " + (ok ? "ok" : "bad"); }
     if (!code || !name) return say("Enter both a code and a name.");
-    if (!/^[A-Za-z0-9-]+$/.test(code)) return say("Use letters, digits or hyphens in the account code.");
     if (acctMap()[code]) return say("Code " + code + " is already used by " + acctMap()[code].name + ".");
     state.accounts.push({ code: code, name: name, type: $("#a-type").value, normal: $("#a-normal").value });
     save(); renderAll();
@@ -201,29 +183,20 @@
   });
 
   /* ---------- journal entry forms ---------- */
-  var TPL = [
-    { label: "Office supplies used", desc: "To record office supplies used", dr: "5020", cr: "1020" },
-    { label: "Depreciation", desc: "To record the depreciation of office supplies", dr: "5030", cr: "1510" },
-    { label: "Unearned revenue earned", desc: "To record the unearned revenue for this month", dr: "2010", cr: "4000" },
-    { label: "Revenue not yet collected", desc: "To record computer service revenue that remains uncollected", dr: "1010", cr: "4000" }
-  ];
-  function todayISO() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
-  function monthEndISO() { var d = new Date(); var e = new Date(d.getFullYear(), d.getMonth() + 1, 0); return e.getFullYear() + "-" + String(e.getMonth() + 1).padStart(2, "0") + "-" + String(e.getDate()).padStart(2, "0"); }
-
   function acctOptions(sel) {
     return '<option value="">Select account</option>' + state.accounts.slice().sort(byCode).map(function (a) {
-      return '<option value="' + esc(a.code) + '"' + (a.code === sel ? " selected" : "") + ">" + esc(a.code) + " – " + esc(a.name) + "</option>";
+      return '<option value="' + esc(a.code) + '"' + (a.code === sel ? " selected" : "") + ">" + esc(a.code) + " - " + esc(a.name) + "</option>";
     }).join("");
   }
   function refreshOptions() {
     $$("select.in-acct").forEach(function (s) { var v = s.value; s.innerHTML = acctOptions(v); s.value = v; });
   }
-  function addLine(p, code, dr, cr) {
+  function addLine(p) {
     var tr = document.createElement("tr");
-    tr.innerHTML = '<td><select class="in-acct" aria-label="Account">' + acctOptions(code) + "</select></td>" +
-      '<td><input class="in-dr" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Debit amount" value="' + (dr || "") + '"></td>' +
-      '<td><input class="in-cr" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Credit amount" value="' + (cr || "") + '"></td>' +
-      '<td class="rm"><button type="button" class="link" aria-label="Remove line">Remove</button></td>';
+    tr.innerHTML = '<td><select class="in-acct" aria-label="Account">' + acctOptions("") + "</select></td>" +
+      '<td><input class="in-dr num" type="number" min="0" step="0.01" aria-label="Debit amount"></td>' +
+      '<td><input class="in-cr num" type="number" min="0" step="0.01" aria-label="Credit amount"></td>' +
+      '<td><button type="button" class="link rm">Remove</button></td>';
     $("#" + p + "-lines").appendChild(tr);
   }
   function resetLines(p) { $("#" + p + "-lines").innerHTML = ""; addLine(p); addLine(p); recalc(p); }
@@ -233,29 +206,30 @@
     }).filter(function (l) { return l.code && (l.dr > 0 || l.cr > 0); });
   }
   function recalc(p) {
+    if (!$("#" + p + "-lines")) return;
     var ls = readLines(p), td = 0, tc = 0;
     ls.forEach(function (l) { td += cents(l.dr); tc += cents(l.cr); });
-    $("#" + p + "-dt").textContent = fmt(td); $("#" + p + "-ct").textContent = fmt(tc);
+    $("#" + p + "-dt").textContent = num(td); $("#" + p + "-ct").textContent = num(tc);
     var m = $("#" + p + "-msg"), ok = td > 0 && td === tc && ls.length >= 2;
-    if (!ls.length) { m.textContent = "Pick accounts and enter amounts."; m.className = "msg"; }
-    else if (td === tc && td > 0) { m.textContent = ls.length < 2 ? "Add at least two lines." : "Balanced. Ready to post."; m.className = "msg " + (ls.length < 2 ? "" : "ok"); }
-    else { m.textContent = "Out of balance by " + peso(Math.abs(td - tc)) + "."; m.className = "msg bad"; }
+    if (!state.accounts.length) { m.textContent = "Add accounts in the Chart of Accounts first."; m.className = "msg"; }
+    else if (!ls.length) { m.textContent = "Choose accounts and enter amounts."; m.className = "msg"; }
+    else if (ok) { m.textContent = "Debits equal credits. Ready to post."; m.className = "msg ok"; }
+    else if (td === tc) { m.textContent = "Add at least two lines."; m.className = "msg"; }
+    else { m.textContent = "Out of balance by " + num(Math.abs(td - tc)) + "."; m.className = "msg bad"; }
     $("#" + p + "-post").disabled = !ok;
   }
   function buildForm(p, adj) {
     $("#" + p + "-form").innerHTML =
-      '<form class="card" id="' + p + '-f" autocomplete="off">' +
-      (adj ? '<div class="tpl f-row"><label class="wide">Common adjustment<select id="adj-tpl"><option value="">Choose a template</option>' +
-        TPL.map(function (t, i) { return '<option value="' + i + '">' + t.label + "</option>"; }).join("") +
-        '</select></label><label>Amount<input id="adj-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></label><button type="button" class="btn" id="adj-apply">Fill entry</button></div>' : "") +
-      '<div class="f-row"><label>Date<input type="date" id="' + p + '-date" required></label>' +
-      '<label>Reference<input type="text" id="' + p + '-ref" maxlength="20" placeholder="' + (adj ? "AJE-006" : "J-014") + '"></label>' +
-      '<label class="grow">Description<input type="text" id="' + p + '-desc" maxlength="120" required placeholder="' + (adj ? "What is being adjusted" : "What happened") + '"></label></div>' +
-      '<div class="tbl-wrap"><table class="lines"><thead><tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th><th></th></tr></thead><tbody id="' + p + '-lines"></tbody>' +
-      '<tfoot><tr><td>Totals</td><td class="num" id="' + p + '-dt"></td><td class="num" id="' + p + '-ct"></td><td></td></tr></tfoot></table></div>' +
-      '<div class="f-actions"><button type="button" class="btn" id="' + p + '-add">Add line</button><span class="msg" id="' + p + '-msg" role="status"></span>' +
+      '<form class="box" id="' + p + '-f" autocomplete="off">' +
+      '<div class="row"><label>Date<input type="date" id="' + p + '-date" required></label>' +
+      '<label>Reference (optional)<input type="text" id="' + p + '-ref" maxlength="20"></label>' +
+      '<label class="grow">Description<input type="text" id="' + p + '-desc" maxlength="120" required></label></div>' +
+      '<div class="table-wrap"><table class="lines"><thead><tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th><th></th></tr></thead>' +
+      '<tbody id="' + p + '-lines"></tbody>' +
+      '<tfoot><tr class="total"><td>Total</td><td class="num" id="' + p + '-dt"></td><td class="num" id="' + p + '-ct"></td><td></td></tr></tfoot></table></div>' +
+      '<div class="actions"><button type="button" class="btn" id="' + p + '-add">Add line</button><span class="msg" id="' + p + '-msg"></span>' +
       '<button type="submit" class="btn primary" id="' + p + '-post" disabled>' + (adj ? "Post adjustment" : "Post transaction") + "</button></div></form>";
-    $("#" + p + "-date").value = "";
+    $("#" + p + "-date").value = todayISO();
     resetLines(p);
     var form = $("#" + p + "-f");
     $("#" + p + "-add").addEventListener("click", function () { addLine(p); });
@@ -267,25 +241,13 @@
     });
     form.addEventListener("change", function () { recalc(p); });
     form.addEventListener("click", function (e) {
-      var b = e.target.closest("td.rm button"); if (!b) return;
+      var b = e.target.closest(".rm"); if (!b) return;
       var tr = b.closest("tr");
-      if ($$("#" + p + "-lines tr").length > 2) tr.remove(); else { $(".in-acct", tr).value = ""; $(".in-dr", tr).value = ""; $(".in-cr", tr).value = ""; }
+      if ($$("#" + p + "-lines tr").length > 2) tr.remove();
+      else { $(".in-acct", tr).value = ""; $(".in-dr", tr).value = ""; $(".in-cr", tr).value = ""; }
       recalc(p);
     });
     form.addEventListener("submit", function (e) { e.preventDefault(); post(p, adj); });
-    if (adj) {
-      $("#adj-apply").addEventListener("click", function () {
-        var i = $("#adj-tpl").value, amt = +$("#adj-amt").value || 0, m = $("#adj-msg");
-        if (i === "") { m.textContent = "Choose a template first."; m.className = "msg bad"; return; }
-        var t = TPL[+i], am = acctMap();
-        $("#adj-desc").value = t.desc;
-        $("#adj-lines").innerHTML = "";
-        addLine("adj", am[t.dr] ? t.dr : "", amt || "", "");
-        addLine("adj", am[t.cr] ? t.cr : "", "", amt || "");
-        recalc("adj");
-        if (!amt) { m.textContent = "Enter the amount on each side to balance the entry."; m.className = "msg"; }
-      });
-    }
   }
   function post(p, adj) {
     var m = $("#" + p + "-msg");
@@ -297,46 +259,45 @@
     if (!desc) return say("Add a description.");
     if (ls.length < 2) return say("An entry needs at least two lines.");
     if (td !== tc || td === 0) return say("Debits and credits must match.");
-    var n = state.entries.filter(function (e) { return !!e.adj === adj; }).length + 1;
-    if (!ref) ref = (adj ? "AJE-" : "J-") + String(n).padStart(3, "0");
     state.entries.push({ id: state.nextId++, date: date, ref: ref, desc: desc, adj: adj, lines: ls });
     save();
     $("#" + p + "-desc").value = ""; $("#" + p + "-ref").value = "";
-    if (adj) { $("#adj-tpl").value = ""; $("#adj-amt").value = ""; }
     resetLines(p); renderAll();
-    m.textContent = "Posted " + ref + " for " + peso(td) + "."; m.className = "msg ok";
+    $("#" + p + "-msg").textContent = "Entry posted."; $("#" + p + "-msg").className = "msg ok";
   }
 
-  /* ---------- delete and reset, with an in-page confirmation step ---------- */
+  /* ---------- delete / clear, with an in-page confirmation ---------- */
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-del],[data-act]"); if (!b) return;
     var label = b.dataset.label || "Delete";
     if (!b.dataset.armed) {
       b.dataset.armed = "1"; b.textContent = "Click again to confirm"; b.classList.add("armed");
-      setTimeout(function () { if (b.isConnected) { delete b.dataset.armed; b.textContent = label; b.classList.remove("armed"); } }, 3500);
+      setTimeout(function () {
+        if (b.isConnected) { delete b.dataset.armed; b.textContent = label; b.classList.remove("armed"); }
+      }, 3500);
       return;
     }
-    if (b.dataset.act === "reset") { state = sampleState(); }
-    else if (b.dataset.act === "clear") { state.entries = []; }
-    else {
+    if (b.dataset.act === "clear") {
+      state = emptyState();
+    } else {
       var parts = b.dataset.del.split(":");
       if (parts[0] === "entry") {
         state.entries = state.entries.filter(function (x) { return String(x.id) !== parts[1]; });
       } else {
-        var n = usage(parts[1]);
+        var n = usage(parts[1]), m = $("#a-msg");
         if (n) {
-          var m = $("#a-msg"); m.textContent = "Account " + parts[1] + " has " + n + " posted line" + (n > 1 ? "s" : "") + " and cannot be deleted. Remove those entries first."; m.className = "msg bad";
-          delete b.dataset.armed; b.textContent = "Delete"; b.classList.remove("armed"); return;
+          m.textContent = "Account " + parts[1] + " is used in " + n + " entry line" + (n > 1 ? "s" : "") + " and cannot be deleted. Delete those entries first.";
+          m.className = "msg bad";
+          delete b.dataset.armed; b.textContent = "Delete"; b.classList.remove("armed");
+          return;
         }
         state.accounts = state.accounts.filter(function (a) { return a.code !== parts[1]; });
-        var m2 = $("#a-msg"); m2.textContent = "Deleted account " + parts[1] + "."; m2.className = "msg ok";
+        m.textContent = "Deleted account " + parts[1] + "."; m.className = "msg ok";
       }
     }
     save(); renderAll();
     if (b.dataset.act) { resetLines("tx"); resetLines("adj"); }
   });
-
-  $("#tx-q").addEventListener("input", renderJournals);
 
   /* ---------- start ---------- */
   buildForm("tx", false);

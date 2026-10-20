@@ -4,90 +4,60 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Accounting Management System</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap">
 <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div>
-      <h1>Accounting Management System</h1>
-      <div class="sub">Jeseecka Fai Antoinee C. Gan, BSCS &middot; Accounting for IT</div>
-    </div>
-    <div class="pills" id="pills"></div>
-  </header>
+<div class="page">
+  <h1>Accounting Management System</h1>
+  <p class="status" id="status"></p>
 
-  <nav class="tabs" role="tablist" aria-label="Sections">
-    <button class="tab" role="tab" data-tab="accounts" id="t-accounts">Chart of Accounts</button>
-    <button class="tab" role="tab" data-tab="transactions" id="t-transactions">Business Transactions</button>
-    <button class="tab" role="tab" data-tab="trial-balance" id="t-trial-balance">Trial Balance</button>
-    <button class="tab" role="tab" data-tab="adjustments" id="t-adjustments">Adjustments</button>
+  <nav class="tabs">
+    <button type="button" class="tab" data-tab="accounts" id="t-accounts">1. Chart of Accounts</button>
+    <button type="button" class="tab" data-tab="transactions" id="t-transactions">2. Business Transactions</button>
+    <button type="button" class="tab" data-tab="trial-balance" id="t-trial-balance">3. Trial Balance</button>
+    <button type="button" class="tab" data-tab="adjustments" id="t-adjustments">4. Adjustments</button>
   </nav>
 
-  <!-- Chart of Accounts -->
-  <section class="panel" id="p-accounts" role="tabpanel" aria-labelledby="t-accounts">
-    <div>
-      <h2>Chart of Accounts</h2>
-      <p class="lede">Every account the business can post to. Contra accounts such as accumulated depreciation and owner's drawings keep the opposite normal balance from their type.</p>
-    </div>
-    <form class="card" id="acct-form" autocomplete="off">
-      <div class="f-row">
-        <label>Account code<input id="a-code" type="text" inputmode="numeric" maxlength="8" placeholder="1040" required></label>
-        <label class="grow">Account name<input id="a-name" type="text" maxlength="60" placeholder="Office Furniture" required></label>
+  <section id="p-accounts">
+    <h2>Chart of Accounts</h2>
+    <form class="box" id="acct-form" autocomplete="off">
+      <div class="row">
+        <label>Account code<input id="a-code" type="text" maxlength="10" required></label>
+        <label class="grow">Account name<input id="a-name" type="text" maxlength="60" required></label>
         <label>Type<select id="a-type"></select></label>
         <label>Normal balance<select id="a-normal"><option>Debit</option><option>Credit</option></select></label>
-        <button class="btn primary" type="submit">Add account</button>
+        <button type="submit" class="btn primary">Add account</button>
       </div>
-      <div class="msg" id="a-msg" role="status"></div>
+      <p class="msg" id="a-msg"></p>
     </form>
-    <div class="tbl-wrap"><table class="coa" id="coa"></table></div>
+    <div class="table-wrap" id="coa"></div>
   </section>
 
-  <!-- Business Transactions -->
-  <section class="panel" id="p-transactions" role="tabpanel" aria-labelledby="t-transactions" hidden>
-    <div>
-      <h2>Business Transactions</h2>
-      <p class="lede">Record each transaction as a journal entry. Debits must equal credits before an entry can be posted.</p>
-    </div>
+  <section id="p-transactions" hidden>
+    <h2>Business Transactions</h2>
     <div id="tx-form"></div>
-    <div class="head-row">
-      <h3>General journal</h3>
-      <label style="flex:0 1 260px">Search entries<input id="tx-q" type="search" placeholder="Description, account or reference"></label>
-    </div>
-    <div class="tbl-wrap" id="tx-list"></div>
+    <h3>General Journal</h3>
+    <div class="table-wrap" id="tx-list"></div>
   </section>
 
-  <!-- Trial Balance -->
-  <section class="panel" id="p-trial-balance" role="tabpanel" aria-labelledby="t-trial-balance" hidden>
-    <div>
-      <h2>Trial Balance</h2>
-      <p class="lede">Ten-column worksheet reduced to six: balances before adjustments, the adjusting entries, and balances after. Each pair of totals should match.</p>
-    </div>
-    <div class="tbl-wrap" id="tb-wrap"></div>
-    <div class="summary" id="tb-summary"></div>
+  <section id="p-trial-balance" hidden>
+    <h2>Trial Balance</h2>
+    <div class="table-wrap" id="tb-wrap"></div>
+    <p class="summary" id="tb-summary"></p>
   </section>
 
-  <!-- Adjustments -->
-  <section class="panel" id="p-adjustments" role="tabpanel" aria-labelledby="t-adjustments" hidden>
-    <div>
-      <h2>Adjustments</h2>
-      <p class="lede">Adjusting entries dated at period end. They update the trial balance but stay separate from day-to-day transactions.</p>
-    </div>
+  <section id="p-adjustments" hidden>
+    <h2>Adjustments</h2>
     <div id="adj-form"></div>
-    <div class="head-row"><h3>Adjusting entries</h3></div>
-    <div class="tbl-wrap" id="adj-list"></div>
+    <h3>Adjusting Entries</h3>
+    <div class="table-wrap" id="adj-list"></div>
   </section>
 
-  <footer class="foot">
-    <span>Data stays in this browser only.</span>
-    <button class="link" data-act="reset" data-label="Restore original entries">Restore original entries</button>
-    <button class="link" data-act="clear" data-label="Clear all entries">Clear all entries</button>
+  <footer>
+    <button type="button" class="link" data-act="clear" data-label="Clear all data">Clear all data</button>
+    <span>Data is saved in this browser only.</span>
   </footer>
 </div>
-
 <script src="script.js"></script>
-
 </body>
 </html>
