@@ -3,11 +3,12 @@
    Tables used (the same ones you already created):
    accounts, journal_entries, journal_lines
 */
-(function () {
-  "use strict";
 
   const SUPABASE_URL = "https://ulxnnzlbrcjqcoapwrtl.supabase.co";
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_LsI-4D7GIOcIIgxGRuW1sg_9eftkPpO";
+
+(function () {
+  "use strict";
 
   const TYPES = ["Asset", "Liability", "Equity", "Revenue", "Expense"];
 
