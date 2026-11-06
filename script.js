@@ -437,8 +437,8 @@
       '</div><div class="tile-label">' + esc(label) + "</div></div>";
   }
 
-  function donutHTML(tx, aj) {
-    const total = tx + aj;
+  function donutHTML(rec, pend) {
+    const total = rec + pend;
     const R = 70;
     const C = 2 * Math.PI * R;
     const BLUE = "#0b7be6";
@@ -446,56 +446,66 @@
 
     // The ring starts as one full circle, then the blue arc is drawn over it.
     // This leaves no seam where the two colors meet.
-    const base = total && aj ? AMBER : "#e8eaed";
+    const base = total && pend ? AMBER : "#e8eaed";
+    const pct = n => total ? Math.round(n * 100 / total) + "%" : "0%";
 
     let svg =
       '<svg class="donut-svg" viewBox="0 0 200 200" role="img" aria-label="' +
-      tx + " transactions and " + aj + ' adjusting entries">' +
+      rec + " recorded and " + pend + ' pending transactions">' +
       '<circle cx="100" cy="100" r="' + R + '" fill="none" stroke="' + base + '" stroke-width="34"/>';
 
-    if (tx) {
-      const l1 = C * tx / total;
+    if (rec) {
+      const l1 = C * rec / total;
       svg += '<circle cx="100" cy="100" r="' + R + '" fill="none" stroke="' + BLUE +
         '" stroke-width="34" stroke-dasharray="' + l1 + " " + (C - l1) +
         '" transform="rotate(-90 100 100)"/>';
     }
 
     svg +=
-      '<text x="100" y="102" text-anchor="middle" font-size="30" fill="#202124">' + total + "</text>" +
-      '<text x="100" y="122" text-anchor="middle" font-size="12" fill="#5f6368">' +
-      (total === 1 ? "entry" : "entries") + "</text></svg>";
-
-    const pct = n => total ? Math.round(n * 100 / total) + "%" : "0%";
+      '<text x="100" y="102" text-anchor="middle" font-size="30" fill="#202124">' + pct(rec) + "</text>" +
+      '<text x="100" y="122" text-anchor="middle" font-size="12" fill="#5f6368">recorded</text></svg>';
 
     return '<div class="donut">' + svg +
       '<div class="legend">' +
-      '<span><i class="swatch" style="background:' + BLUE + '"></i>Transactions: ' + tx + " (" + pct(tx) + ")</span>" +
-      '<span><i class="swatch" style="background:' + AMBER + '"></i>Adjusting Entries: ' + aj + " (" + pct(aj) + ")</span>" +
+      '<span><i class="swatch" style="background:' + BLUE + '"></i>Recorded Transactions: ' + rec + " (" + pct(rec) + ")</span>" +
+      '<span><i class="swatch" style="background:' + AMBER + '"></i>Pending Transactions: ' + pend + " (" + pct(pend) + ")</span>" +
       "</div></div>";
   }
 
   function renderDashboard(tb) {
     const s = computeStatements(tb);
-    const tx = state.entries.filter(e => !e.adj).length;
-    const aj = state.entries.length - tx;
+
+    const txEntries = state.entries.filter(e => !e.adj);
+    const tx = txEntries.length;                 // Total / Original journal entries
+    const aj = state.entries.length - tx;        // Adjusting entries
+
+    // Recorded = a balanced entry with at least 2 lines.
+    // Pending = any regular entry that is not.
+    const isRecorded = e => {
+      const d = e.lines.reduce((n, l) => n + cents(l.dr), 0);
+      const c = e.lines.reduce((n, l) => n + cents(l.cr), 0);
+      return e.lines.length >= 2 && d > 0 && d === c;
+    };
+    const recorded = txEntries.filter(isRecorded).length;
+    const pending = tx - recorded;
+
     const hasEntries = state.entries.length > 0;
     const balanced = tb.t.udr === tb.t.ucr && tb.t.fdr === tb.t.fcr;
 
     $("#tiles").innerHTML =
       tileHTML(String(tx), "Total Transactions", "blue") +
+      tileHTML(String(recorded), "Recorded Transactions", "green") +
+      tileHTML(String(pending), "Pending Transactions", "orange") +
+      tileHTML(String(tx), "Original Journal Entries", "") +
       tileHTML(String(aj), "Adjusting Entries", "") +
-      tileHTML(String(state.accounts.length), "Accounts", "") +
       tileHTML(
         !hasEntries ? "NO ENTRIES" : balanced ? "BALANCED" : "NOT BALANCED",
         "Trial Balance Status",
         !hasEntries ? "" : balanced ? "good" : "bad"
       ) +
-      tileHTML(num(s.totalRev), "Total Revenue", "green") +
-      tileHTML(num(s.totalExp), "Total Expenses", "orange") +
-      tileHTML(num(Math.abs(s.net)), s.net < 0 ? "Net Loss" : "Net Income", s.net < 0 ? "bad" : "green") +
-      tileHTML(num(s.ending), s.capName + ", Ending", "");
+      tileHTML(num(Math.abs(s.net)), s.net < 0 ? "Net Loss" : "Net Income", s.net < 0 ? "bad" : "green");
 
-    $("#donut").innerHTML = donutHTML(tx, aj);
+    $("#donut").innerHTML = donutHTML(recorded, pending);
   }
 
   // -------------------------------
