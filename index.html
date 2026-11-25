@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -111,6 +110,18 @@
         data-tab="owners-equity" id="t-owners-equity">
         <svg class="ico"><use href="#i-list"/></svg>
         <span>Statement of Owner's Equity</span>
+      </button>
+
+      <button type="button" class="nav-item"
+        data-tab="financial-position" id="t-financial-position">
+        <svg class="ico"><use href="#i-list"/></svg>
+        <span>Statement of Financial Position</span>
+      </button>
+
+      <button type="button" class="nav-item"
+        data-tab="cash-flows" id="t-cash-flows">
+        <svg class="ico"><use href="#i-list"/></svg>
+        <span>Statement of Cash Flows</span>
       </button>
 
     </nav>
@@ -389,6 +400,66 @@
             </div>
 
             <div class="stmt-wrap" id="oe-out"></div>
+
+          </section>
+
+          <!-- ==================================
+               STATEMENT OF FINANCIAL POSITION
+          ================================== -->
+
+          <section id="p-financial-position" hidden>
+
+            <div class="box">
+
+              <div class="row">
+
+                <label class="grow">
+                  Business name (optional)
+                  <input id="fp-biz" type="text" maxlength="80">
+                </label>
+
+                <label class="grow">
+                  Period (optional)
+                  <input id="fp-period" type="text"
+                    maxlength="80"
+                    placeholder="For the month ended December 31, 2024">
+                </label>
+
+              </div>
+
+            </div>
+
+            <div class="stmt-wrap" id="fp-out"></div>
+
+          </section>
+
+          <!-- ==================================
+               STATEMENT OF CASH FLOWS
+          ================================== -->
+
+          <section id="p-cash-flows" hidden>
+
+            <div class="box">
+
+              <div class="row">
+
+                <label class="grow">
+                  Business name (optional)
+                  <input id="cf-biz" type="text" maxlength="80">
+                </label>
+
+                <label class="grow">
+                  Period (optional)
+                  <input id="cf-period" type="text"
+                    maxlength="80"
+                    placeholder="For the month ended December 31, 2024">
+                </label>
+
+              </div>
+
+            </div>
+
+            <div class="stmt-wrap" id="cf-out"></div>
 
           </section>
 

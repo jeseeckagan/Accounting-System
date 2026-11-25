@@ -19,9 +19,14 @@
     "trial-balance": "Trial Balance",
     "adjustments": "Adjustments",
     "income-statement": "Income Statement",
-    "owners-equity": "Statement of Owner's Equity"
+    "owners-equity": "Statement of Owner's Equity",
+    "financial-position": "Statement of Financial Position",
+    "cash-flows": "Statement of Cash Flows"
   };
   const TABS = Object.keys(VIEW_NAMES);
+
+  // Statements that have the "Business name / Period" boxes
+  const STMT_IDS = ["is", "oe", "fp", "cf"];
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -595,10 +600,181 @@
     return h + "</tbody></table></div>";
   }
 
+  // Shows negatives in parentheses, the way statements are normally written.
+  const neg = c => c < 0 ? "(" + num(-c) + ")" : num(c);
+
+  const EMPTY_STMT =
+    '<p class="empty">No entries yet. Post transactions and adjustments to see this statement.</p>';
+
+  // -------------------------------
+  // STATEMENT OF FINANCIAL POSITION
+  // -------------------------------
+
+  function financialPositionHTML(tb, s) {
+    if (!state.entries.length) return EMPTY_STMT;
+
+    const assets = [];
+    const liabs = [];
+    let totalA = 0;
+    let totalL = 0;
+
+    tb.rows.forEach(r => {
+      if (r.a.type === "Asset") {
+        const v = r.f.dr - r.f.cr;
+        if (v) assets.push({ name: r.a.name, v });
+        totalA += v;
+      } else if (r.a.type === "Liability") {
+        const v = r.f.cr - r.f.dr;
+        if (v) liabs.push({ name: r.a.name, v });
+        totalL += v;
+      }
+    });
+
+    const totalE = s.ending;
+
+    let h = '<div class="stmt">' + stmtHead("Statement of Financial Position") + "<table><tbody>";
+
+    h += srow("Assets", "", "", { row: "sec" });
+    if (assets.length) {
+      assets.forEach(a => { h += srow(esc(a.name), neg(a.v), "", { indent: "ind" }); });
+    } else {
+      h += srow("None", "", "", { indent: "ind", dim: true });
+    }
+    h += srow("Total Assets", "", neg(totalA), { row: "grand", totalCls: "dbl" });
+
+    h += srow("Liabilities", "", "", { row: "sec" });
+    if (liabs.length) {
+      liabs.forEach(l => { h += srow(esc(l.name), neg(l.v), "", { indent: "ind" }); });
+    } else {
+      h += srow("None", "", "", { indent: "ind", dim: true });
+    }
+    h += srow("Total Liabilities", "", neg(totalL), { indent: "ind", totalCls: "rule" });
+
+    h += srow("Owner's Equity", "", "", { row: "sec" });
+    h += srow(esc(s.capName) + ", ending", "", neg(totalE), { indent: "ind" });
+
+    h += srow("Total Liabilities and Owner's Equity", "", neg(totalL + totalE),
+      { row: "grand", totalCls: "dbl" });
+
+    h += "</tbody></table>";
+
+    if (totalA !== totalL + totalE) {
+      h += '<p class="msg bad">Assets do not equal liabilities plus owner\'s equity (difference ' +
+        num(Math.abs(totalA - totalL - totalE)) + "). Check your entries.</p>";
+    }
+
+    return h + "</div>";
+  }
+
+  // -------------------------------
+  // STATEMENT OF CASH FLOWS
+  // -------------------------------
+
+  // Cash accounts are Asset accounts with "cash" or "bank" in the name.
+  const isCashAcct = a =>
+    a.type === "Asset" && /cash|bank/i.test(a.name) && !/receivable|payable/i.test(a.name);
+
+  const INVESTING_RE =
+    /equipment|furniture|fixture|building|land|vehicle|truck|machinery|computer|property|investment|patent|software|improvement|tools/i;
+
+  const FINANCING_LIAB_RE = /loan|note|mortgage|bond|borrow/i;
+
+  // Direct method: every entry that touches a cash account is looked at, and the
+  // cash movement is sorted by the other accounts used in that entry.
+  function computeCashFlow() {
+    const map = acctMap();
+    const cashIds = new Set(state.accounts.filter(isCashAcct).map(a => String(a.id)));
+
+    const cf = { hasCash: cashIds.size > 0, op: new Map(), inv: new Map(), fin: new Map() };
+    if (!cf.hasCash) return cf;
+
+    state.entries.forEach(e => {
+      if (!e.lines.some(l => cashIds.has(String(l.acct)))) return;
+
+      e.lines.forEach(l => {
+        const key = String(l.acct);
+        if (cashIds.has(key)) return;
+
+        const a = map[key];
+        if (!a) return;
+
+        // Money in (+) or out (-) from the point of view of cash
+        const v = cents(l.cr) - cents(l.dr);
+        if (!v) return;
+
+        let sec = "op";
+        let label = a.name;
+
+        if (a.type === "Revenue") {
+          label = "Cash received from " + a.name;
+        } else if (a.type === "Expense") {
+          label = "Cash paid for " + a.name;
+        } else if (a.type === "Equity") {
+          sec = "fin";
+        } else if (a.type === "Liability" && FINANCING_LIAB_RE.test(a.name)) {
+          sec = "fin";
+        } else if (a.type === "Asset" && INVESTING_RE.test(a.name)) {
+          sec = "inv";
+        }
+
+        cf[sec].set(label, (cf[sec].get(label) || 0) + v);
+      });
+    });
+
+    return cf;
+  }
+
+  function cashFlowHTML(cf) {
+    if (!state.entries.length) return EMPTY_STMT;
+
+    if (!cf.hasCash) {
+      return '<p class="empty">No cash account found. Add an Asset account named "Cash" ' +
+        '(or "Cash in Bank") in the Chart of Accounts to see this statement.</p>';
+    }
+
+    let h = '<div class="stmt">' + stmtHead("Statement of Cash Flows") + "<table><tbody>";
+
+    const block = (title, items, totalLabel) => {
+      let total = 0;
+
+      h += srow(title, "", "", { row: "sec" });
+
+      const rows = Array.from(items).filter(x => x[1]);
+
+      if (rows.length) {
+        rows.forEach(x => {
+          total += x[1];
+          h += srow(esc(x[0]), neg(x[1]), "", { indent: "ind" });
+        });
+      } else {
+        h += srow("None", "", "", { indent: "ind", dim: true });
+      }
+
+      h += srow(totalLabel, "", neg(total), { indent: "ind", totalCls: "rule" });
+
+      return total;
+    };
+
+    const op = block("Cash flows from operating activities", cf.op, "Net cash from operating activities");
+    const inv = block("Cash flows from investing activities", cf.inv, "Net cash from investing activities");
+    const fin = block("Cash flows from financing activities", cf.fin, "Net cash from financing activities");
+
+    const net = op + inv + fin;
+    const begin = 0; // The system keeps a single period, so cash starts at zero.
+
+    h += srow("Net increase (decrease) in cash", "", neg(net), { row: "sec", totalCls: "rule" });
+    h += srow("Cash, beginning", "", neg(begin), {});
+    h += srow("Cash, ending", "", neg(begin + net), { row: "grand", totalCls: "dbl" });
+
+    return h + "</tbody></table></div>";
+  }
+
   function renderStatements(tb) {
     const s = computeStatements(tb);
     $("#is-out").innerHTML = incomeStatementHTML(s);
     $("#oe-out").innerHTML = equityStatementHTML(s);
+    $("#fp-out").innerHTML = financialPositionHTML(tb, s);
+    $("#cf-out").innerHTML = cashFlowHTML(computeCashFlow());
   }
 
   function loadHeading() {
@@ -609,7 +785,7 @@
       }
     } catch (e) {}
 
-    ["is", "oe"].forEach(p => {
+    STMT_IDS.forEach(p => {
       $("#" + p + "-biz").value = heading.biz;
       $("#" + p + "-period").value = heading.period;
 
@@ -617,7 +793,7 @@
         $("#" + p + "-" + k).addEventListener("input", e => {
           heading[k] = e.target.value;
 
-          ["is", "oe"].forEach(q => {
+          STMT_IDS.forEach(q => {
             if (q !== p) $("#" + q + "-" + k).value = heading[k];
           });
 
