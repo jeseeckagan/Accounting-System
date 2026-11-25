@@ -64,6 +64,10 @@
   let state = { accounts: [], entries: [] };
   let heading = { biz: "", period: "" };
 
+  // Which account / journal entry is being edited right now (null = none)
+  let editingAcct = null;
+  const editing = { tx: null, adj: null };
+
   // -------------------------------
   // STATUS AND ERRORS
   // -------------------------------
@@ -155,6 +159,8 @@
       $("#auth-password").value = "";
     } else {
       state = { accounts: [], entries: [] };
+      ["tx", "adj"].forEach(p => { if (editing[p] != null) stopEntryEdit(p); });
+      if (editingAcct != null) stopAcctEdit();
       closeMenu();
       $("#auth-password").value = "";
       renderAll();
@@ -848,7 +854,9 @@
         "<td>" + esc(a.type) + "</td>" +
         "<td>" + esc(a.normal) + "</td>" +
         '<td class="num">' + usage(a.id) + "</td>" +
-        '<td><button type="button" class="link" data-del="acct:' + esc(a.id) + '">Delete</button></td>' +
+        '<td class="row-actions">' +
+        '<button type="button" class="link" data-edit="acct:' + esc(a.id) + '">Edit</button>' +
+        '<button type="button" class="link" data-del="acct:' + esc(a.id) + '">Delete</button></td>' +
         "</tr>";
     });
 
@@ -899,8 +907,9 @@
 
       h +=
         '<tr class="line last"><td></td><td class="ind2"><em>' + esc(e.desc) + "</em></td>" +
-        '<td></td><td></td><td></td><td><button type="button" class="link" data-del="entry:' +
-        esc(e.id) + '">Delete</button></td></tr>';
+        '<td></td><td></td><td></td><td class="row-actions">' +
+        '<button type="button" class="link" data-edit="entry:' + esc(e.id) + '">Edit</button>' +
+        '<button type="button" class="link" data-del="entry:' + esc(e.id) + '">Delete</button></td></tr>';
     });
 
     return h +
@@ -989,8 +998,48 @@
   // ADD ACCOUNT
   // -------------------------------
 
+  function startAcctEdit(id) {
+    const a = state.accounts.find(x => String(x.id) === String(id));
+    if (!a) return;
+
+    editingAcct = String(a.id);
+
+    $("#a-code").value = a.code;
+    $("#a-name").value = a.name;
+    $("#a-type").value = a.type;
+    $("#a-normal").value = a.normal;
+
+    $("#a-submit").textContent = "Save changes";
+    $("#a-cancel").hidden = false;
+
+    const m = $("#a-msg");
+    m.textContent = "Editing " + a.name + ". Change the details, then press Save changes.";
+    m.className = "msg";
+
+    $("#acct-form").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("#a-name").focus({ preventScroll: true });
+  }
+
+  function stopAcctEdit() {
+    editingAcct = null;
+
+    $("#a-code").value = "";
+    $("#a-name").value = "";
+    $("#a-type").value = TYPES[0];
+    $("#a-normal").value = "Debit";
+
+    $("#a-submit").textContent = "Add account";
+    $("#a-cancel").hidden = true;
+
+    const m = $("#a-msg");
+    m.textContent = "";
+    m.className = "msg";
+  }
+
   function bindAccountForm() {
     $("#a-type").innerHTML = TYPES.map(t => "<option>" + t + "</option>").join("");
+
+    $("#a-cancel").addEventListener("click", stopAcctEdit);
 
     $("#a-type").addEventListener("change", function () {
       $("#a-normal").value =
@@ -1014,9 +1063,45 @@
       if (!name) return say("Enter an account name.", false);
 
       if (state.accounts.some(a =>
-        a.name.toLowerCase() === name.toLowerCase() || (code && a.code === code)
+        String(a.id) !== String(editingAcct) &&
+        (a.name.toLowerCase() === name.toLowerCase() || (code && a.code === code))
       )) {
         return say("That account name or code already exists.", false);
+      }
+
+      // Editing an existing account
+      if (editingAcct != null) {
+        const { data: upd, error: updError } = await supabaseClient
+          .from("accounts")
+          .update({
+            code: code || null,
+            name,
+            type: $("#a-type").value,
+            normal_balance: $("#a-normal").value
+          })
+          .eq("id", Number(editingAcct))
+          .eq("user_id", user.id)
+          .select()
+          .single();
+
+        if (updError) return say(updError.message, false);
+
+        const i = state.accounts.findIndex(a => String(a.id) === String(editingAcct));
+
+        if (i >= 0) {
+          state.accounts[i] = {
+            id: String(upd.id),
+            code: upd.code || "",
+            name: upd.name,
+            type: upd.type,
+            normal: upd.normal_balance
+          };
+        }
+
+        stopAcctEdit();
+        renderAll();
+
+        return say("Saved " + name + ".", true);
       }
 
       const { data, error } = await supabaseClient
@@ -1163,6 +1248,7 @@
       '<div class="actions">' +
       '<button type="button" class="btn" id="' + p + '-add">Add line</button>' +
       '<span class="msg" id="' + p + '-msg"></span>' +
+      '<button type="button" class="btn" id="' + p + '-cancel" hidden>Cancel edit</button>' +
       '<button type="submit" class="btn primary" id="' + p + '-post" disabled>' +
       (adj ? "Post adjustment" : "Post transaction") + "</button>" +
       "</div></form>";
@@ -1174,6 +1260,7 @@
     const form = $("#" + p + "-f");
 
     $("#" + p + "-add").addEventListener("click", () => addLine(p));
+    $("#" + p + "-cancel").addEventListener("click", () => stopEntryEdit(p));
 
     form.addEventListener("input", e => {
       const t = e.target;
@@ -1241,6 +1328,10 @@
     if (ls.length < 2) return say("An entry needs at least two lines.");
     if (td !== tc || td === 0) return say("Debits and credits must match.");
 
+    // When editing, the corrected entry is saved first and the old one is
+    // removed afterwards, so nothing is lost if a step fails.
+    const oldId = editing[p];
+
     $("#" + p + "-post").disabled = true;
 
     const { data: entry, error: entryError } = await supabaseClient
@@ -1287,6 +1378,33 @@
       );
     }
 
+    if (oldId != null) {
+      const { data: gone, error: delError } = await supabaseClient
+        .from("journal_entries")
+        .delete()
+        .eq("id", oldId)
+        .eq("user_id", user.id)
+        .select("id");
+
+      if (delError || !gone || !gone.length) {
+        await supabaseClient
+          .from("journal_entries")
+          .delete()
+          .eq("id", entry.id)
+          .eq("user_id", user.id);
+
+        recalc(p);
+
+        return say(
+          "Could not replace the old entry" +
+          (delError ? ": " + delError.message : ". It may have been deleted already.") +
+          " Your changes were not saved."
+        );
+      }
+
+      stopEntryEdit(p);
+    }
+
     $("#" + p + "-desc").value = "";
     $("#" + p + "-ref").value = "";
 
@@ -1294,9 +1412,74 @@
 
     await refresh();
 
-    $("#" + p + "-msg").textContent = "Entry posted successfully.";
+    $("#" + p + "-msg").textContent =
+      oldId != null ? "Entry updated successfully." : "Entry posted successfully.";
     $("#" + p + "-msg").className = "msg ok";
   }
+
+  // -------------------------------
+  // EDIT ACTIONS
+  // -------------------------------
+
+  function startEntryEdit(id) {
+    const e = state.entries.find(x => x.id === id);
+    if (!e) return;
+
+    const p = e.adj ? "adj" : "tx";
+
+    editing[p] = id;
+
+    $("#" + p + "-date").value = e.date;
+    $("#" + p + "-ref").value = e.ref;
+    $("#" + p + "-desc").value = e.desc;
+
+    $("#" + p + "-lines").innerHTML = "";
+
+    e.lines.forEach(l => {
+      addLine(p);
+
+      const rows = $$("#" + p + "-lines tr");
+      const r = rows[rows.length - 1];
+
+      $(".in-acct", r).value = String(l.acct);
+      $(".in-dr", r).value = l.dr ? l.dr : "";
+      $(".in-cr", r).value = l.cr ? l.cr : "";
+    });
+
+    while ($$("#" + p + "-lines tr").length < 2) addLine(p);
+
+    $("#" + p + "-post").textContent = "Save changes";
+    $("#" + p + "-cancel").hidden = false;
+
+    recalc(p);
+
+    $("#" + p + "-f").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function stopEntryEdit(p) {
+    editing[p] = null;
+
+    $("#" + p + "-post").textContent = p === "adj" ? "Post adjustment" : "Post transaction";
+    $("#" + p + "-cancel").hidden = true;
+
+    $("#" + p + "-date").value = todayISO();
+    $("#" + p + "-ref").value = "";
+    $("#" + p + "-desc").value = "";
+
+    resetLines(p);
+  }
+
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-edit]");
+
+    if (!b) return;
+    if (!requireLogin()) return;
+
+    const [kind, id] = (b.dataset.edit || "").split(":");
+
+    if (kind === "acct") startAcctEdit(id);
+    if (kind === "entry") startEntryEdit(Number(id));
+  });
 
   // -------------------------------
   // DELETE AND CLEAR ACTIONS

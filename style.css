@@ -784,6 +784,11 @@ select:focus {
   font-weight: 800;
 }
 
+.row-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
 
 /* =========================================
    MESSAGES AND ACTIONS
